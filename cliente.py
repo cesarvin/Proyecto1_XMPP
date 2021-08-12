@@ -1,20 +1,21 @@
-import time
-import asyncio
 import threading
+import time
+
 import Botslixmpp
-from getpass import getpass
 
 serverip = "192.168.56.1"
 port = 5222
 
+
 def session(client, stop):
     while True:
         client.process(forever=True, timeout=3)
-        if stop(): 
+        if stop():
             break
 
     client.close_conection()
     return
+
 
 def cliente():
     while True:
@@ -29,7 +30,7 @@ def cliente():
             print("Opcion no valida,\nSeleccione una opción ")
             continue
         break
-    
+
     # Create account
     if opmenu == 1:
         print('\nRegistro de una cuenta')
@@ -39,7 +40,7 @@ def cliente():
         xmpp = Botslixmpp.EchoRegisterBot(jid, password)
         xmpp.connect(address=(serverip, port))
         xmpp.process(forever=False)
-    
+
     # Singin
     if opmenu == 2:
         print('\nIniciar sesión')
@@ -52,7 +53,7 @@ def cliente():
         xmpp.connect(address=(serverip, port))
 
         stop_session = False
-        theads = threading.Thread(target = session, args=(xmpp, lambda : stop_session,))
+        theads = threading.Thread(target=session, args=(xmpp, lambda: stop_session,))
         theads.start()
 
         time.sleep(3)
@@ -68,35 +69,35 @@ def cliente():
 
         while True:
             print('\nMenu de cuenta' +
-                '\n\t1.Lista de contactos' +
-                '\n\t2.Agregar un usuario a los contactos' +
-                '\n\t3.Ver mis conversaciones' +
-                '\n\t4.Mensaje directo a cualquier usuario/contacto' +
-                #'\n\t5.Participar en conversaciones grupales' +
-                #'\n\t6.Definir mensaje de presencia' +
-                #'\n\t7.Enviar/recibir notificaciones' +
-                #'\n\t8.Enviar/recibir archivos +'
-                '\n\t9.Cerrar sesión y salir')
+                  '\n\t1.Lista de contactos' +
+                  '\n\t2.Agregar un usuario a los contactos' +
+                  '\n\t3.Ver mis conversaciones' +
+                  '\n\t4.Mensaje directo a cualquier usuario/contacto' +
+                  # '\n\t5.Participar en conversaciones grupales' +
+                  # '\n\t6.Definir mensaje de presencia' +
+                  # '\n\t7.Enviar/recibir notificaciones' +
+                  # '\n\t8.Enviar/recibir archivos +'
+                  '\n\t9.Cerrar sesión y salir')
             opcontacto = int(input('Seleccione una opción: '))
 
             if opcontacto < 1 or opcontacto > 9:
                 print("Opcion no valida,\nSeleccione una opción: ")
                 continue
-            
+
             if opcontacto == 1:
                 xmpp.get_contacts()
-        
+
             if opcontacto == 2:
                 new_contact = input("Añadir contacto: ")
                 xmpp.new_contact(new_contact)
-            
+
             if opcontacto == 3:
                 chats = xmpp.get_chats()
 
                 if len(chats.keys()) == 0:
                     print("No hay ningun chat")
                     continue
-                
+
                 index = 1
                 print("Chats abiertos:")
                 for key in chats.keys():
@@ -108,7 +109,7 @@ def cliente():
                 message = input("Mensaje: ")
                 xmpp.direct_message(to, message)
                 print("Mensaje enviado...")
-            
+
             if opcontacto == 9:
                 stop_session = True
                 theads.join()
@@ -124,6 +125,7 @@ def cliente():
 
     elif opmenu == 4:
         return
+
 
 cliente()
 exit(1)

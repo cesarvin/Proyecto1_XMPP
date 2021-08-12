@@ -4,9 +4,7 @@
 
 import asyncio
 import sys
-import threading
-import time
-import xml.etree.ElementTree as ET
+
 from slixmpp import ClientXMPP
 from slixmpp.exceptions import IqError, IqTimeout
 
