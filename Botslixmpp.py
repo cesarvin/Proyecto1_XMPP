@@ -36,6 +36,7 @@ class EchoRegisterBot(ClientXMPP):
 
         self.add_event_handler("register", self.register_account)
 
+
     async def session_start(self):
         """
         session start
@@ -112,63 +113,104 @@ class EchoUnregisterBot(ClientXMPP):
             print("\nError al eliminar la cuenta %s" % e.iq['error']['text'])
             await self.disconnect()
 
-
 class EchoClientBot(ClientXMPP):
     def __init__(self, jid, password, status, message):
+        """
+        init client bot
+        args: self, jid, password, status, message
+        """
         ClientXMPP.__init__(self, jid, password)
-
+        
         self.jid = jid
         self.status = status
-        self.message = message
-        self.session = False
-        self.contacts = []
-        self.presences_received = threading.Event()
-
-        # Set the client to auto authorize and subscribe when
-        # a subcription event is recieved
+        self.account_message = message
+        self.disconected = True
+        self.messages = {}
+        
         self.roster.auto_authorize = True
         self.roster.auto_subscribe = True
-
+        
+        # Handlers
+        self.add_event_handler("session_start", self.start)
+        self.add_event_handler("message", self.message)
+        
         # Plugins
-        self.register_plugin('xep_0030')  # Service Discovery
-        self.register_plugin('xep_0199')  # XMPP Ping
+        self.register_plugin('xep_0030') # Service Discovery
+        self.register_plugin('xep_0004') # Data Forms
+        self.register_plugin('xep_0133') # Service administration
+        self.register_plugin('xep_0199') # XMPP Ping
 
-        # Set the events' handlers
-        self.add_event_handler("session_start", self.session_start)
-
-    async def session_start(self, event):
-        self.send_presence(pshow=self.status, pstatus=self.message)
-
+    async def start(self, event):
+        """
+        Start conection function
+        args: self, event
+        """
+        self.send_presence(pshow=self.status, pstatus=self.account_message)
         try:
             await self.get_roster()
-            self.session = True
+            self.disconected = False
+            print("\nUsuario conectado: " + self.jid)
         except:
             self.disconnect()
 
-    @staticmethod
-    def session_thread(xmpp, stop):
-        while True:
-            xmpp.process(forever=True)
+    def close_conection(self):
+        """
+        Close conectigon function
+        args: self
+        """
+        pres = self.Presence()
+        pres['type'] = 'unavailable'
+        pres.send()
 
-            if stop():
-                break
+    def message(self, message):
+        """
+        get messages function
+        args, message
+        """        
+        if message['type'] in ('chat', 'normal'):
+            print('mensajes')
+            de = str(message['from'])
+            de = de[:de.index("@")]
+            message = str(message['body'])
 
-        xmpp.get_disconnected()
-        return
+            if de in self.messages.keys():
+                self.messages[de]["messages"].append(de + ": " + message)
+            else:
+                self.messages[de] = {"messages":[de + ": " + message]}
 
-    def exitprogram(self):
-        self.disconnect(wait=False)
+            if self.current_chat_with == de:
+                print(de + ": " + message)
+            else:
+                print("*** message recieved from  " + de + " ***")
+
+    def direct_message(self, to, message):
+        """
+        Send direct message function
+        args to, message
+        """
+        self.send_message(mto=to, mbody=message, mtype='chat', mfrom=self.jid)
+        
+        para = to[:to.index("@")]
+        de = self.jid[:self.jid.index("@")]
+
+        if para in self.messages.keys():
+            self.messages[para]["messages"].append(de + ": " + message)
+        else:
+            self.messages[para] = {"messages":[de + ": " + message]}
 
     def get_contacts(self):
+        """
+        get contacts function
+        args self
+        """
         try:
             self.get_roster()
         except IqError as err:
-            print('Error: %s' % err.iq['error']['condition'])
+            print('IqError')
         except IqTimeout:
-            print('Error: Request timed out')
+            print('IqTimeout')
 
         print('Buscando contactos...\n')
-        self.presences_received.wait(5)
         groups = self.client_roster.groups()
 
         for group in groups:
@@ -178,13 +220,24 @@ class EchoClientBot(ClientXMPP):
                     if pres['status']:
                         status = pres['status']
 
-                self.contacts.append(jid + ' - ' + status)
+                print(jid + ' - ' + status)
+    
+    def get_chats(self):
+        """
+        return all chats
+        args self
+        """
+        return self.messages
+    
+    def new_contact(self, to):
+        """
+        Add new contact function
+        args to
+        """
+        try:
+            self.send_presence_subscription(to, self.jid, 'subscribe')
+            print("\nContacto agregado!\n")
+        except:
+            print("\nError al agregar")
 
-        r = []
-        r = self.contacts
-        self.contacts = []
-        return r
-
-    def add_contact(self, jid):
-        #self.send_presence_subscription(jid, self.jid, ptype='subscribe')
-        self.send_presence_subscription(pto=jid)
+  
