@@ -1,8 +1,13 @@
-import sys
-import asyncio
+# codigo basado en: https://slixmpp.readthedocs.io/_/downloads/en/slix-1.6.0/pdf/
+# Title: Slixmpp Documentation
+# Description: Slixmpp Documentation with python examples
 
+import asyncio
+import sys
+import time
+import xml.etree.ElementTree as ET
 from slixmpp import ClientXMPP
-from slixmpp.exceptions import IqError
+from slixmpp.exceptions import IqError, IqTimeout
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -17,8 +22,7 @@ class EchoRegisterBot(ClientXMPP):
         ClientXMPP.__init__(self, jid, password)
 
         self.add_event_handler("session_start", self.session_start)
-        # self.add_event_handler("message", self.message)
-
+        
         # If you wanted more functionality, here's how to register plugins:
         self.register_plugin('xep_0030')  # Service Discovery
         self.register_plugin('xep_0199')  # XMPP Ping
@@ -52,10 +56,10 @@ class EchoRegisterBot(ClientXMPP):
         # create account
         try:
             await resp.send()
-            print("\n\nCuenta creada %s" % self.boundjid)
+            print("\nCuenta creada %s" % self.boundjid)
             await self.disconnect()
         except IqError as e:
-            print("\n\nError al registrar la cuenta %s" % e.iq['error']['text'])
+            print("\nError al registrar la cuenta %s" % e.iq['error']['text'])
             await self.disconnect()
 
 
@@ -101,8 +105,50 @@ class EchoUnregisterBot(ClientXMPP):
         # Delete account
         try:
             await resp.send()
-            print("Cuenta eliminada %s" % self.boundjid)
+            print("\nCuenta eliminada %s" % self.boundjid)
             await self.disconnect()
         except IqError as e:
-            print("Error al eliminar la cuenta %s" % e.iq['error']['text'])
+            print("\nError al eliminar la cuenta %s" % e.iq['error']['text'])
             await self.disconnect()
+
+
+class EchoClientBot(ClientXMPP):
+    def __init__(self, jid, password, status, message):
+        ClientXMPP.__init__(self, jid, password)
+
+        self.jid = jid
+        self.status = status
+        self.message = message
+        self.session = False
+
+        # Set the client to auto authorize and subscribe when
+        # a subcription event is recieved
+        self.roster.auto_authorize = True
+        self.roster.auto_subscribe = True
+
+        # Plugins
+        self.register_plugin('xep_0030')  # Service Discovery
+        self.register_plugin('xep_0199')  # XMPP Ping
+
+        # Set the events' handlers
+        self.add_event_handler("session_start", self.session_start)
+
+    async def session_start(self, event):
+        self.send_presence(pshow=self.status, pstatus=self.message)
+
+        try:
+            await self.get_roster()
+            self.session = True
+        except:
+            self.disconnect()
+
+    @staticmethod
+    def session_thread(xmpp, stop):
+        while True:
+            xmpp.process(forever=True)
+
+            if stop():
+                break
+
+        xmpp.get_disconnected()
+        return
