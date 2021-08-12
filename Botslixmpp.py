@@ -4,6 +4,7 @@
 
 import asyncio
 import sys
+import threading
 import time
 import xml.etree.ElementTree as ET
 from slixmpp import ClientXMPP
@@ -22,7 +23,7 @@ class EchoRegisterBot(ClientXMPP):
         ClientXMPP.__init__(self, jid, password)
 
         self.add_event_handler("session_start", self.session_start)
-        
+
         # If you wanted more functionality, here's how to register plugins:
         self.register_plugin('xep_0030')  # Service Discovery
         self.register_plugin('xep_0199')  # XMPP Ping
@@ -120,6 +121,8 @@ class EchoClientBot(ClientXMPP):
         self.status = status
         self.message = message
         self.session = False
+        self.contacts = []
+        self.presences_received = threading.Event()
 
         # Set the client to auto authorize and subscribe when
         # a subcription event is recieved
@@ -152,3 +155,36 @@ class EchoClientBot(ClientXMPP):
 
         xmpp.get_disconnected()
         return
+
+    def exitprogram(self):
+        self.disconnect(wait=False)
+
+    def get_contacts(self):
+        try:
+            self.get_roster()
+        except IqError as err:
+            print('Error: %s' % err.iq['error']['condition'])
+        except IqTimeout:
+            print('Error: Request timed out')
+
+        print('Buscando contactos...\n')
+        self.presences_received.wait(5)
+        groups = self.client_roster.groups()
+
+        for group in groups:
+            for jid in groups[group]:
+                connections = self.client_roster.presence(jid)
+                for res, pres in connections.items():
+                    if pres['status']:
+                        status = pres['status']
+
+                self.contacts.append(jid + ' - ' + status)
+
+        r = []
+        r = self.contacts
+        self.contacts = []
+        return r
+
+    def add_contact(self, jid):
+        #self.send_presence_subscription(jid, self.jid, ptype='subscribe')
+        self.send_presence_subscription(pto=jid)

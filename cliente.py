@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import threading
 
 import Botslixmpp as Botslixmpp
@@ -39,67 +40,73 @@ while True:
         status = 'chat'
         message = "available"
 
-        session = False
-        while not session:
+        xmpp = Botslixmpp.EchoClientBot(jid, password, status, message)
+        xmpp.connect(address=(serverip, port))
 
-            xmpp = Botslixmpp.EchoClientBot(jid, password, status, message)
-            xmpp.connect(address=(serverip, port))
+        stop_threads = False
+        threads = threading.Thread(target=Botslixmpp.EchoClientBot.session_thread,
+                                   args=(xmpp, lambda: stop_threads,))
+        threads.start()
 
-            stop_threads = False
-            threads = threading.Thread(target=Botslixmpp.EchoClientBot.session_thread,
-                                       args=(xmpp, lambda: stop_threads,))
-            threads.start()
+        print('Conectando...')
+        time.sleep(5)
+        session = xmpp.session
+        print('session', session)
+        if not session:
+            print('No se pudo conectar')
+            os._exit(0)
 
-            while not xmpp.session:
+        while session:
+            print('\nMenu de cuenta' +
+                  '\n\t1.Lista de contactos' +
+                  '\n\t2.Agregar un usuario a los contactos' +
+                  '\n\t3.Mostrar detalles de contacto de un usuario' +
+                  '\n\t4.Comunicación 1 a 1 con cualquier usuario/contacto' +
+                  '\n\t5.Participar en conversaciones grupales' +
+                  '\n\t6.Definir mensaje de presencia' +
+                  '\n\t7.Enviar/recibir notificaciones' +
+                  '\n\t8.Enviar/recibir archivos +'
+                  '\n\t9.Cerrar sesión y salir')
+            sop = int(input('Seleccione una opción:'))
+
+            # validate selected option
+            if 0 > sop < 10:
+                print('Seleccione una opcion valida')
+
+            if sop == 1:
+                data = xmpp.get_contacts()
+                for row in data:
+                    print(row)
+            if sop == 2:
+                try:
+                    contact = input('Ingrese el contacto: ')
+
+                    xmpp.add_contact(contact)
+                except:
+                    print('ocurrio un error')
+
+            if sop == 3:
                 pass
 
-            while True:
-                print('\nMenu de cuenta' +
-                      '\n\t1.Mostrar todos los usuarios/contactos y su estado' +
-                      '\n\t2.Agregar un usuario a los contactos' +
-                      '\n\t3.Mostrar detalles de contacto de un usuario' +
-                      '\n\t4.Comunicación 1 a 1 con cualquier usuario/contacto' +
-                      '\n\t5.Participar en conversaciones grupales' +
-                      '\n\t6.Definir mensaje de presencia' +
-                      '\n\t7.Enviar/recibir notificaciones' +
-                      '\n\t8.Enviar/recibir archivos +'
-                      '\n\t9.Cerrar sesión y salir')
-                sop = int(input('Seleccione una opción:'))
+            if sop == 4:
+                pass
 
-                # validate selected option
-                if 0 > sop < 10:
-                    print('Seleccione una opcion valida')
+            if sop == 5:
+                pass
 
-                if sop == 1:
-                    pass
+            if sop == 6:
+                pass
 
-                if sop == 2:
-                    pass
+            if sop == 7:
+                pass
 
-                if sop == 3:
-                    pass
+            if sop == 8:
+                pass
 
-                if sop == 4:
-                    pass
-
-                if sop == 5:
-                    pass
-
-                if sop == 6:
-                    pass
-
-                if sop == 7:
-                    pass
-
-                if sop == 8:
-                    pass
-
-                if sop == 9:
-                    stop_threads = True
-                    threads.join()
-                    os._exit(0)
-                    break
-
+            if sop == 9:
+                xmpp.exitprogram()
+                os._exit(0)
+                break
 
     # delete an account
     if op == 3:
